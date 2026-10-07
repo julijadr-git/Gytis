@@ -1,3 +1,4 @@
+import { useState } from "react";
 import "./Profile.css";
 
 function getInitials(name = "") {
@@ -9,9 +10,12 @@ function getInitials(name = "") {
   return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
 }
 
-function Profile({ user = {}, tasks = [] }) {
+function Profile({ user = {}, tasks = [], onNameChange }) {
   const safeTasks = Array.isArray(tasks) ? tasks : [];
   const name = user?.name || user?.username || "Flowly naudotojas";
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(name);
+  const [nameError, setNameError] = useState("");
   const email = user?.email || "Nenurodytas";
   const completedTasks = safeTasks.filter(
     (task) => task?.status === "Atlikta",
@@ -19,6 +23,27 @@ function Profile({ user = {}, tasks = [] }) {
   const progress = safeTasks.length
     ? Math.round((completedTasks / safeTasks.length) * 100)
     : 0;
+
+  function handleNameSubmit(event) {
+    event.preventDefault();
+    const nextName = editedName.trim();
+
+    if (!nextName) {
+      setNameError("Įveskite vardą.");
+      return;
+    }
+
+    onNameChange?.(nextName);
+    setEditedName(nextName);
+    setNameError("");
+    setIsEditingName(false);
+  }
+
+  function handleEditCancel() {
+    setEditedName(name);
+    setNameError("");
+    setIsEditingName(false);
+  }
 
   return (
     <main className="profile-page">
@@ -84,9 +109,40 @@ function Profile({ user = {}, tasks = [] }) {
           </div>
         </dl>
 
-        <button className="profile-edit-button" type="button" disabled>
-          Redaguoti profilį
-        </button>
+        {isEditingName ? (
+          <form className="profile-edit-form" onSubmit={handleNameSubmit}>
+            <label className="profile-edit-field">
+              <span>Naujas vardas</span>
+              <input
+                type="text"
+                value={editedName}
+                onChange={(event) => {
+                  setEditedName(event.target.value);
+                  setNameError("");
+                }}
+                autoFocus
+                maxLength={80}
+                required
+              />
+            </label>
+            {nameError && <p className="profile-edit-error" role="alert">{nameError}</p>}
+            <div className="profile-edit-actions">
+              <button className="profile-edit-button" type="submit">Išsaugoti vardą</button>
+              <button className="profile-cancel-button" type="button" onClick={handleEditCancel}>Atšaukti</button>
+            </div>
+          </form>
+        ) : (
+          <button
+            className="profile-edit-button"
+            type="button"
+            onClick={() => {
+              setEditedName(name);
+              setIsEditingName(true);
+            }}
+          >
+            Keisti vardą
+          </button>
+        )}
       </section>
     </main>
   );
