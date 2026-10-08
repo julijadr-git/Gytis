@@ -4,6 +4,7 @@ import ProgressBar from "./ProgressBar";
 import Navbar from "./Navbar";
 import AddTaskForm from "./AddTaskForm";
 import Profile from "./Profile";
+import Weather from "./Weather";
 import "./App.css";
 
 const TASKS_API_URL = "https://testapi.io/api/julijadr-git/resource/tasklist";
@@ -264,6 +265,8 @@ function App() {
   return (
     <>
       <Navbar activePage={activePage} onNavigate={setActivePage} />
+
+      {activePage === "home" && <Weather />}
 
       {activePage === "home" && (
         <>
