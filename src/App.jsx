@@ -7,6 +7,7 @@ import Profile from "./Profile";
 import "./App.css";
 
 const TASKS_API_URL = "https://testapi.io/api/julijadr-git/resource/tasklist";
+const USERS_API_URL = "https://testapi.io/api/julijadr-git/resource/reg";
 
 function normalizeTask(task) {
   return {
@@ -30,8 +31,11 @@ function App() {
   const [activePage, setActivePage] = useState("home");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
 
   const [tasks, setTasks] = useState([]);
   const [tasksLoading, setTasksLoading] = useState(true);
@@ -68,16 +72,65 @@ function App() {
     return fetchTasks();
   }, [fetchTasks]);
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+    const username = email.trim();
+    setAuthLoading(true);
+    setLoginError("");
+    setAuthMessage("");
 
-    if (email === "admin" && password === "admin") {
+    try {
+      if (isRegistering) {
+        const listResponse = await fetch(USERS_API_URL);
+        if (!listResponse.ok) throw new Error(`Nepavyko patikrinti vartotojų (${listResponse.status}).`);
+        const listData = await listResponse.json();
+        const users = Array.isArray(listData) ? listData : listData?.data;
+        if (!Array.isArray(users)) throw new Error("API grąžino netinkamo formato vartotojų sąrašą.");
+
+        const alreadyExists = users.some((entry) =>
+          String(entry.user || "").toLowerCase() === username.toLowerCase(),
+        );
+        if (alreadyExists) {
+          setLoginError("Šis vartotojo vardas jau užimtas.");
+          return;
+        }
+
+        const response = await fetch(USERS_API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user: username, password }),
+        });
+        if (!response.ok) throw new Error(`Registracija nepavyko (${response.status}).`);
+
+        setAuthMessage("Registracija sėkminga. Dabar galite prisijungti.");
+        setIsRegistering(false);
+        setPassword("");
+        return;
+      }
+
+      const response = await fetch(USERS_API_URL);
+      if (!response.ok) throw new Error(`Nepavyko patikrinti prisijungimo (${response.status}).`);
+      const data = await response.json();
+      const users = Array.isArray(data) ? data : data?.data;
+      if (!Array.isArray(users)) throw new Error("API grąžino netinkamo formato vartotojų sąrašą.");
+
+      const matchedUser = users.find((entry) =>
+        String(entry.user || "").toLowerCase() === username.toLowerCase() &&
+        entry.password === password,
+      );
+
+      if (!matchedUser) {
+        setLoginError("Neteisingas vartotojo vardas arba slaptažodis.");
+        return;
+      }
+
+      setUser((currentUser) => ({ ...currentUser, name: matchedUser.user }));
       setIsLoggedIn(true);
-      setLoginError("");
-      return;
+    } catch (error) {
+      setLoginError(getApiErrorMessage(error, "Nepavyko prisijungti prie vartotojų API."));
+    } finally {
+      setAuthLoading(false);
     }
-
-    setLoginError("Neteisingas vartotojo vardas arba slaptažodis.");
   }
 
   async function handleAddTask(newTask) {
@@ -189,8 +242,8 @@ function App() {
               <div className="login-card">
                 <>
                   <header className="login-card__header">
-                    <h1>Prisijungti</h1>
-                    <p>Įveskite savo duomenis, kad tęstumėte</p>
+                    <h1>{isRegistering ? "Registruotis" : "Prisijungti"}</h1>
+                    <p>{isRegistering ? "Sukurkite vartotojo paskyrą" : "Įveskite savo duomenis, kad tęstumėte"}</p>
                   </header>
 
                   <form className="login-form" onSubmit={handleSubmit}>
@@ -198,9 +251,9 @@ function App() {
                       <span>Vartotojo vardas</span>
                       <input
                         type="text"
-                        name="username"
+                        name="user"
                         autoComplete="username"
-                        placeholder="admin"
+                        placeholder="Vartotojo vardas"
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
                         required
@@ -212,7 +265,7 @@ function App() {
                       <input
                         type="password"
                         name="password"
-                        autoComplete="current-password"
+                        autoComplete={isRegistering ? "new-password" : "current-password"}
                         placeholder="••••••••"
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
@@ -220,9 +273,24 @@ function App() {
                       />
                     </label>
 
-                    <button type="submit" className="login-submit">
-                      Prisijungti
+                    <button type="submit" className="login-submit" disabled={authLoading}>
+                      {authLoading ? "Prašome palaukti..." : isRegistering ? "Registruotis" : "Prisijungti"}
                     </button>
+
+                    <button
+                      type="button"
+                      className="auth-mode-toggle"
+                      disabled={authLoading}
+                      onClick={() => {
+                        setIsRegistering((current) => !current);
+                        setLoginError("");
+                        setAuthMessage("");
+                      }}
+                    >
+                      {isRegistering ? "Jau turite paskyrą? Prisijunkite" : "Neturite paskyros? Registruokitės"}
+                    </button>
+
+                    {authMessage && <p className="auth-message" role="status">{authMessage}</p>}
 
                     {loginError && (
                       <p className="login-error" role="alert">
