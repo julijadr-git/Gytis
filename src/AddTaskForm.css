@@ -230,6 +230,17 @@
   border-color: #ad72f2;
 }
 
+.add-task__submit:disabled,
+.add-task__cancel:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.add-task__error {
+  color: #ff8585;
+  font-size: 14px;
+}
+
 /* Mobile */
 
 @media (max-width: 580px) {

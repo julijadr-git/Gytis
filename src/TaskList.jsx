@@ -35,6 +35,8 @@ function TaskList({ tasks = [], loading = false, onStatusChange, onDeadlineChang
                 <select
                   className={`task-status task-status--${task.status
                     .toLowerCase()
+                    .replace("ė", "e")
+                    .toLowerCase()
                     .replace(" ", "-")}`}
                   value={task.status}
                   onChange={(event) =>

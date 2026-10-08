@@ -54,6 +54,28 @@
   color: var(--text);
 }
 
+.tasks-error {
+  width: min(100%, 400px);
+  padding: 12px 16px;
+  border: 1px solid #a94442;
+  border-radius: 10px;
+  background: rgba(169, 68, 66, 0.12);
+  color: #ff8585;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+.tasks-error button {
+  margin-left: 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .login-card {
   width: min(100%, 400px);
   padding: 36px 32px 32px;

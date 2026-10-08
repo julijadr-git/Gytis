@@ -1,10 +1,25 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import TaskList from "./TaskList";
 import ProgressBar from "./ProgressBar";
 import Navbar from "./Navbar";
 import AddTaskForm from "./AddTaskForm";
 import Profile from "./Profile";
 import "./App.css";
+
+const TASKS_API_URL = "https://testapi.io/api/julijadr-git/resource/tasklist";
+
+function normalizeTask(task) {
+  return {
+    ...task,
+    title: task.title || "",
+    status: task.status || "Nepradėta",
+    deadline: task.deadline || "",
+  };
+}
+
+function getApiErrorMessage(error, fallback) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 
 function App() {
   const [user, setUser] = useState({
@@ -18,20 +33,40 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginError, setLoginError] = useState("");
 
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      title: "Sukurti prisijungimo formą",
-      status: "Atlikta",
-      deadline: "2026-10-01",
-    },
-    {
-      id: 2,
-      title: "Sukurti užduočių sąrašą",
-      status: "Vykdoma",
-      deadline: "2026-10-05",
-    },
-  ]);
+  const [tasks, setTasks] = useState([]);
+  const [tasksLoading, setTasksLoading] = useState(true);
+  const [tasksError, setTasksError] = useState("");
+
+  const fetchTasks = useCallback(async () => {
+    try {
+      const response = await fetch(TASKS_API_URL);
+      if (!response.ok) throw new Error(`Serverio klaida (${response.status}).`);
+
+      const data = await response.json();
+      const taskList = Array.isArray(data) ? data : data?.data;
+      if (!Array.isArray(taskList)) throw new Error("API grąžino netinkamo formato užduotis.");
+
+      setTasks(taskList.map(normalizeTask));
+      setTasksError("");
+    } catch (error) {
+      setTasksError(getApiErrorMessage(error, "Nepavyko įkelti užduočių iš API."));
+    } finally {
+      setTasksLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      fetchTasks();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [fetchTasks]);
+
+  const loadTasks = useCallback(() => {
+    setTasksError("");
+    return fetchTasks();
+  }, [fetchTasks]);
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -45,24 +80,66 @@ function App() {
     setLoginError("Neteisingas vartotojo vardas arba slaptažodis.");
   }
 
-  function handleAddTask(newTask) {
-    setTasks((currentTasks) => [...currentTasks, newTask]);
+  async function handleAddTask(newTask) {
+    setTasksError("");
+
+    try {
+      const response = await fetch(TASKS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newTask.title,
+          status: newTask.status,
+          deadline: newTask.deadline,
+        }),
+      });
+      if (!response.ok) throw new Error(`Nepavyko išsaugoti užduoties (${response.status}).`);
+
+      const data = await response.json().catch(() => null);
+      const savedTask = data?.data || data;
+      if (savedTask && typeof savedTask === "object" && savedTask.id != null) {
+        setTasks((currentTasks) => [...currentTasks, normalizeTask(savedTask)]);
+      } else {
+        await loadTasks();
+      }
+    } catch (error) {
+      setTasksError(getApiErrorMessage(error, "Nepavyko išsaugoti užduoties."));
+      throw error;
+    }
+  }
+
+  async function updateTask(taskId, updates) {
+    const task = tasks.find((item) => String(item.id) === String(taskId));
+    if (!task) return;
+
+    setTasksError("");
+    try {
+      const response = await fetch(`${TASKS_API_URL}/${encodeURIComponent(task.id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: task.title,
+          status: updates.status ?? task.status,
+          deadline: updates.deadline ?? task.deadline,
+        }),
+      });
+      if (!response.ok) throw new Error(`Nepavyko atnaujinti užduoties (${response.status}).`);
+
+      setTasks((currentTasks) => currentTasks.map((item) =>
+        String(item.id) === String(taskId) ? { ...item, ...updates } : item,
+      ));
+    } catch (error) {
+      setTasksError(getApiErrorMessage(error, "Nepavyko atnaujinti užduoties."));
+      await loadTasks();
+    }
   }
 
   function handleTaskStatusChange(taskId, status) {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId ? { ...task, status } : task,
-      ),
-    );
+    return updateTask(taskId, { status });
   }
 
   function handleTaskDeadlineChange(taskId, deadline) {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId ? { ...task, deadline } : task,
-      ),
-    );
+    return updateTask(taskId, { deadline });
   }
 
   const today = new Date();
@@ -91,6 +168,11 @@ function App() {
           )}
 
           <main className="login-page">
+            {isLoggedIn && tasksError && (
+              <p className="tasks-error" role="alert">
+                {tasksError} <button type="button" onClick={loadTasks}>Bandyti dar kartą</button>
+              </p>
+            )}
             {!isLoggedIn && (
               <div className="login-card">
                 <>
@@ -154,7 +236,7 @@ function App() {
 
                 <TaskList
                   tasks={tasks}
-                  loading={false}
+                  loading={tasksLoading}
                   onStatusChange={handleTaskStatusChange}
                   onDeadlineChange={handleTaskDeadlineChange}
                 />

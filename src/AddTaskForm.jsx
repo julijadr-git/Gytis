@@ -6,9 +6,13 @@ function AddTaskForm({ onAddTask }) {
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
   const [status, setStatus] = useState("Nepradėta");
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+    setError("");
+    setIsSaving(true);
 
     const newTask = {
       id: Date.now(),
@@ -17,12 +21,17 @@ function AddTaskForm({ onAddTask }) {
       deadline,
     };
 
-    onAddTask(newTask);
-
-    setTitle("");
-    setDeadline("");
-    setStatus("Nepradėta");
-    setIsOpen(false);
+    try {
+      await onAddTask(newTask);
+      setTitle("");
+      setDeadline("");
+      setStatus("Nepradėta");
+      setIsOpen(false);
+    } catch {
+      setError("Užduoties išsaugoti nepavyko. Patikrinkite ryšį ir bandykite dar kartą.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function handleCancel() {
@@ -111,10 +120,11 @@ function AddTaskForm({ onAddTask }) {
               Atšaukti
             </button>
 
-            <button type="submit" className="add-task__submit">
-              Pridėti užduotį
+            <button type="submit" className="add-task__submit" disabled={isSaving}>
+              {isSaving ? "Saugoma..." : "Pridėti užduotį"}
             </button>
           </div>
+          {error && <p className="add-task__error" role="alert">{error}</p>}
         </form>
       </div>
     </div>
