@@ -176,6 +176,7 @@ function App() {
           title: newTask.title,
           status: newTask.status,
           deadline: newTask.deadline,
+          user: savedUsername,
         }),
       });
       if (!response.ok) throw new Error(`Nepavyko išsaugoti užduoties (${response.status}).`);
@@ -183,7 +184,10 @@ function App() {
       const data = await response.json().catch(() => null);
       const savedTask = data?.data || data;
       if (savedTask && typeof savedTask === "object" && savedTask.id != null) {
-        setTasks((currentTasks) => [...currentTasks, normalizeTask(savedTask)]);
+        setTasks((currentTasks) => [
+          ...currentTasks,
+          normalizeTask({ ...savedTask, user: savedTask.user || savedUsername }),
+        ]);
       } else {
         await loadTasks();
       }
@@ -194,7 +198,9 @@ function App() {
   }
 
   async function updateTask(taskId, updates) {
-    const task = tasks.find((item) => String(item.id) === String(taskId));
+    const task = tasks.find((item) =>
+      String(item.id) === String(taskId) && item.user === savedUsername,
+    );
     if (!task) return;
 
     setTasksError("");
@@ -207,6 +213,7 @@ function App() {
           ...updates,
           status: updates.status ?? task.status,
           deadline: updates.deadline ?? task.deadline,
+          user: task.user,
         }),
       });
       if (!response.ok) throw new Error(`Nepavyko atnaujinti užduoties (${response.status}).`);
@@ -222,7 +229,9 @@ function App() {
   }
 
   async function handleDeleteTask(taskId) {
-    const task = tasks.find((item) => String(item.id) === String(taskId));
+    const task = tasks.find((item) =>
+      String(item.id) === String(taskId) && item.user === savedUsername,
+    );
     if (!task) return;
 
     setTasksError("");
@@ -241,10 +250,11 @@ function App() {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const completedTaskCount = tasks.filter(
+  const userTasks = tasks.filter((task) => task.user === savedUsername);
+  const completedTaskCount = userTasks.filter(
     (task) => task.status === "Atlikta",
   ).length;
-  const overdueTaskCount = tasks.filter((task) => {
+  const overdueTaskCount = userTasks.filter((task) => {
     if (task.status === "Atlikta" || !task.deadline) return false;
 
     const deadline = new Date(`${task.deadline}T00:00:00`);
@@ -260,7 +270,7 @@ function App() {
           {isLoggedIn && (
             <header className="welcome-message">
               <h1>Sveiki sugrįžę!</h1>
-              <p>Prisijungėte kaip admin.</p>
+                  <p>Prisijungėte kaip {savedUsername}.</p>
             </header>
           )}
 
@@ -338,7 +348,7 @@ function App() {
               <>
                 <section className="dashboard-summary" aria-label="Užduočių suvestinė">
                   <p>
-                    <strong>{tasks.length} užduotys</strong>
+                    <strong>{userTasks.length} užduotys</strong>
                     <span aria-hidden="true">·</span>
                     <strong>{completedTaskCount} atliktos</strong>
                     <span aria-hidden="true">·</span>
@@ -347,7 +357,7 @@ function App() {
                 </section>
 
                 <TaskList
-                  tasks={tasks}
+                  tasks={userTasks}
                   loading={tasksLoading}
                   onUpdateTask={updateTask}
                   onDeleteTask={handleDeleteTask}
@@ -365,7 +375,7 @@ function App() {
       {activePage === "profile" && (
         <Profile
           user={user}
-          tasks={tasks}
+          tasks={userTasks}
           onNameChange={(name) => setUser((currentUser) => ({ ...currentUser, name }))}
           onLogout={handleLogout}
         />
