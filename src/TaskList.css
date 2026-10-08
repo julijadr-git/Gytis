@@ -101,6 +101,81 @@
   color: var(--text);
 }
 
+.task-edit-form {
+  display: grid;
+  gap: 14px;
+}
+
+.task-edit-field {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.task-edit-field input,
+.task-edit-field select {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.task-edit-field input:focus,
+.task-edit-field select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.task-action-button {
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-h);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.task-action-button:hover:not(:disabled) {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.task-action-button--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.task-action-button--danger {
+  color: #ff8585;
+}
+
+.task-action-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.task-action-error {
+  margin: 0 0 14px;
+  color: #ff8585;
+  font-size: 14px;
+}
+
 .task-deadline input {
   min-width: 0;
   padding: 5px 8px;

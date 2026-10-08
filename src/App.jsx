@@ -119,6 +119,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: task.title,
+          ...updates,
           status: updates.status ?? task.status,
           deadline: updates.deadline ?? task.deadline,
         }),
@@ -131,15 +132,26 @@ function App() {
     } catch (error) {
       setTasksError(getApiErrorMessage(error, "Nepavyko atnaujinti užduoties."));
       await loadTasks();
+      throw error;
     }
   }
 
-  function handleTaskStatusChange(taskId, status) {
-    return updateTask(taskId, { status });
-  }
+  async function handleDeleteTask(taskId) {
+    const task = tasks.find((item) => String(item.id) === String(taskId));
+    if (!task) return;
 
-  function handleTaskDeadlineChange(taskId, deadline) {
-    return updateTask(taskId, { deadline });
+    setTasksError("");
+    try {
+      const response = await fetch(`${TASKS_API_URL}/${encodeURIComponent(task.id)}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error(`Nepavyko ištrinti užduoties (${response.status}).`);
+
+      setTasks((currentTasks) => currentTasks.filter((item) => String(item.id) !== String(taskId)));
+    } catch (error) {
+      setTasksError(getApiErrorMessage(error, "Nepavyko ištrinti užduoties."));
+      throw error;
+    }
   }
 
   const today = new Date();
@@ -237,8 +249,8 @@ function App() {
                 <TaskList
                   tasks={tasks}
                   loading={tasksLoading}
-                  onStatusChange={handleTaskStatusChange}
-                  onDeadlineChange={handleTaskDeadlineChange}
+                  onUpdateTask={updateTask}
+                  onDeleteTask={handleDeleteTask}
                 />
 
                 <AddTaskForm onAddTask={handleAddTask} />
