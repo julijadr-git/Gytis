@@ -8,6 +8,15 @@ import "./App.css";
 
 const TASKS_API_URL = "https://testapi.io/api/julijadr-git/resource/tasklist";
 const USERS_API_URL = "https://testapi.io/api/julijadr-git/resource/reg";
+const SESSION_STORAGE_KEY = "flowly-user";
+
+function getSavedUsername() {
+  try {
+    return window.localStorage.getItem(SESSION_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
 
 function normalizeTask(task) {
   return {
@@ -23,8 +32,9 @@ function getApiErrorMessage(error, fallback) {
 }
 
 function App() {
+  const [savedUsername, setSavedUsername] = useState(getSavedUsername);
   const [user, setUser] = useState({
-    name: "Jonas Jonaitis",
+    name: savedUsername || "Jonas Jonaitis",
     email: "jonas@flowly.lt",
   });
 
@@ -33,7 +43,7 @@ function App() {
   const [password, setPassword] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(Boolean(savedUsername));
   const [loginError, setLoginError] = useState("");
   const [authMessage, setAuthMessage] = useState("");
 
@@ -125,12 +135,34 @@ function App() {
       }
 
       setUser((currentUser) => ({ ...currentUser, name: matchedUser.user }));
+      try {
+        window.localStorage.setItem(SESSION_STORAGE_KEY, matchedUser.user);
+        setSavedUsername(matchedUser.user);
+      } catch {
+        setLoginError("Nepavyko išsaugoti prisijungimo šiame įrenginyje.");
+        return;
+      }
       setIsLoggedIn(true);
     } catch (error) {
       setLoginError(getApiErrorMessage(error, "Nepavyko prisijungti prie vartotojų API."));
     } finally {
       setAuthLoading(false);
     }
+  }
+
+  function handleLogout() {
+    try {
+      window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    } catch {
+      // Atsijungimas tęsiasi ir jei naršyklė neleidžia naudoti vietinės saugyklos.
+    }
+    setSavedUsername("");
+    setIsLoggedIn(false);
+    setActivePage("home");
+    setEmail("");
+    setPassword("");
+    setLoginError("");
+    setAuthMessage("");
   }
 
   async function handleAddTask(newTask) {
@@ -331,7 +363,12 @@ function App() {
       )}
 
       {activePage === "profile" && (
-        <Profile user={user} tasks={tasks} onNameChange={(name) => setUser((currentUser) => ({ ...currentUser, name }))} />
+        <Profile
+          user={user}
+          tasks={tasks}
+          onNameChange={(name) => setUser((currentUser) => ({ ...currentUser, name }))}
+          onLogout={handleLogout}
+        />
       )}
     </>
   );

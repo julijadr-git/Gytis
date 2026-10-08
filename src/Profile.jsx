@@ -10,7 +10,7 @@ function getInitials(name = "") {
   return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
 }
 
-function Profile({ user = {}, tasks = [], onNameChange }) {
+function Profile({ user = {}, tasks = [], onNameChange, onLogout }) {
   const safeTasks = Array.isArray(tasks) ? tasks : [];
   const name = user?.name || user?.username || "Flowly naudotojas";
   const [isEditingName, setIsEditingName] = useState(false);
@@ -143,6 +143,10 @@ function Profile({ user = {}, tasks = [], onNameChange }) {
             Keisti vardą
           </button>
         )}
+
+        <button className="profile-logout-button" type="button" onClick={onLogout}>
+          Atsijungti
+        </button>
       </section>
     </main>
   );
